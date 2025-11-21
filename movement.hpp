@@ -2,6 +2,11 @@
 #define MOVEMENT_HPP
 
 #include <glm/glm.hpp>
+
+#include <glm/gtc/matrix_transform.hpp>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/rotate_vector.hpp>
+
 #include "sbpt_generated_includes.hpp"
 
 namespace movement {
@@ -145,6 +150,33 @@ glm::vec3 get_new_fps_character_velocity(glm::vec3 current_velocity, const Input
     global_logger.info("=== End velocity update ===");
     return current_velocity;
 }
+
+class RotatingMovement {
+  public:
+    RotatingMovement(double radius, const glm::vec3 &origin = glm::vec3(0.0f),
+                     const glm::vec3 &rotation_axis = glm_utils::y, double rotation_rate_hz = 1.0)
+        : radius_(radius), rotation_axis_(glm::normalize(rotation_axis)), rotation_rate_hz_(rotation_rate_hz),
+          origin_(origin), accumulated_time_(0.0) {}
+
+    // dt = delta time since last frame
+    glm::vec3 get_current_position(double dt) {
+        accumulated_time_ += dt;
+
+        double angular_velocity = rotation_rate_hz_ * 2.0 * M_PI; // radians per sec
+        double angle = angular_velocity * accumulated_time_;
+
+        glm::vec3 base(radius_, 0.0f, 0.0f);
+        glm::vec3 rotated = glm::rotate(base, (float)angle, rotation_axis_);
+        return origin_ + rotated;
+    }
+
+  private:
+    double radius_;
+    glm::vec3 rotation_axis_;
+    double rotation_rate_hz_;
+    glm::vec3 origin_;
+    double accumulated_time_;
+};
 
 } // namespace movement
 
