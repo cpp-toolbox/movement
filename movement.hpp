@@ -77,77 +77,77 @@ constexpr float STOPPING_FRICTION_PER_SECOND = 0.01;
 template <FPSMovementInputLike Input>
 glm::vec3 get_new_fps_character_velocity(glm::vec3 current_velocity, const Input &input_state,
                                          glm::vec3 xy_forward_vector_camera, double dt, GroundState ground_state) {
-    LogSection _(global_logger, "get_new_fps_character_velocity", false);
+    LogSection _(*global_logger, "get_new_fps_character_velocity", false);
 
-    global_logger.info("=== Start velocity update ===");
-    global_logger.info("Current velocity: x={}, y={}, z={}", current_velocity.x, current_velocity.y,
-                       current_velocity.z);
-    global_logger.info("Delta time (dt): {}", dt);
-    global_logger.info("Ground state: {}", static_cast<int>(ground_state));
+    global_logger->info("=== Start velocity update ===");
+    global_logger->info("Current velocity: x={}, y={}, z={}", current_velocity.x, current_velocity.y,
+                        current_velocity.z);
+    global_logger->info("Delta time (dt): {}", dt);
+    global_logger->info("Ground state: {}", static_cast<int>(ground_state));
 
     // Get input vector
     glm::vec2 input_vec = get_input_vector(input_state);
-    global_logger.info("Input vector: x={}, y={}", input_vec.x, input_vec.y);
+    global_logger->info("Input vector: x={}, y={}", input_vec.x, input_vec.y);
 
     // Convert input to world-space horizontal velocity
     glm::vec3 forward = glm::normalize(glm::vec3(xy_forward_vector_camera.x, 0.0f, xy_forward_vector_camera.z));
     glm::vec3 right = glm::normalize(glm::cross(forward, glm::vec3(0, 1, 0)));
-    global_logger.info("Forward vector: x={}, y={}, z={}", forward.x, forward.y, forward.z);
-    global_logger.info("Right vector: x={}, y={}, z={}", right.x, right.y, right.z);
+    global_logger->info("Forward vector: x={}, y={}, z={}", forward.x, forward.y, forward.z);
+    global_logger->info("Right vector: x={}, y={}, z={}", right.x, right.y, right.z);
 
     glm::vec3 look_input_vec = input_vec.x * right + input_vec.y * forward;
-    global_logger.info("Look input vector (world-space): x={}, y={}, z={}", look_input_vec.x, look_input_vec.y,
-                       look_input_vec.z);
+    global_logger->info("Look input vector (world-space): x={}, y={}, z={}", look_input_vec.x, look_input_vec.y,
+                        look_input_vec.z);
 
     // Horizontal velocity only
     glm::vec3 horizontal_velocity = glm::vec3(current_velocity.x, 0.0f, current_velocity.z);
-    global_logger.info("Initial horizontal velocity: x={}, y={}, z={}", horizontal_velocity.x, horizontal_velocity.y,
-                       horizontal_velocity.z);
+    global_logger->info("Initial horizontal velocity: x={}, y={}, z={}", horizontal_velocity.x, horizontal_velocity.y,
+                        horizontal_velocity.z);
 
     if (glm::length(look_input_vec) > 0.0f) {
         // Accelerate in the input direction
         horizontal_velocity += look_input_vec * static_cast<float>(ACCELERATION * dt);
-        global_logger.info("Accelerated horizontal velocity: x={}, y={}, z={}", horizontal_velocity.x,
-                           horizontal_velocity.y, horizontal_velocity.z);
+        global_logger->info("Accelerated horizontal velocity: x={}, y={}, z={}", horizontal_velocity.x,
+                            horizontal_velocity.y, horizontal_velocity.z);
 
         // Apply moving friction
         horizontal_velocity *= pow(MOVING_FRICTION_PER_SECOND, dt);
-        global_logger.info("After moving friction: x={}, y={}, z={}", horizontal_velocity.x, horizontal_velocity.y,
-                           horizontal_velocity.z);
+        global_logger->info("After moving friction: x={}, y={}, z={}", horizontal_velocity.x, horizontal_velocity.y,
+                            horizontal_velocity.z);
     } else {
         // Apply stopping friction
         horizontal_velocity *= pow(STOPPING_FRICTION_PER_SECOND, dt);
-        global_logger.info("No input detected. After stopping friction: x={}, y={}, z={}", horizontal_velocity.x,
-                           horizontal_velocity.y, horizontal_velocity.z);
+        global_logger->info("No input detected. After stopping friction: x={}, y={}, z={}", horizontal_velocity.x,
+                            horizontal_velocity.y, horizontal_velocity.z);
     }
 
     // Copy over horizontal velocity, keep vertical unchanged
     current_velocity.x = horizontal_velocity.x;
     current_velocity.z = horizontal_velocity.z;
-    global_logger.info("Updated current_velocity (horizontal only): x={}, y={}, z={}", current_velocity.x,
-                       current_velocity.y, current_velocity.z);
+    global_logger->info("Updated current_velocity (horizontal only): x={}, y={}, z={}", current_velocity.x,
+                        current_velocity.y, current_velocity.z);
 
     if (ground_state == GroundState::OnGround) {
-        global_logger.info("On ground logic active");
+        global_logger->info("On ground logic active");
 
         // Zero out downward velocity
         if (current_velocity.y < 0.0f) {
             current_velocity.y = 0.0f;
-            global_logger.info("Downward velocity zeroed");
+            global_logger->info("Downward velocity zeroed");
         }
 
         // Jumping
         if (input_state.jump_pressed) {
             current_velocity.y = JUMP_SPEED;
-            global_logger.info("Jump pressed. New vertical velocity: y={}", current_velocity.y);
+            global_logger->info("Jump pressed. New vertical velocity: y={}", current_velocity.y);
         }
     }
 
     // Apply gravity
     current_velocity.y += GRAVITY * dt;
-    global_logger.info("After gravity: y={}", current_velocity.y);
+    global_logger->info("After gravity: y={}", current_velocity.y);
 
-    global_logger.info("=== End velocity update ===");
+    global_logger->info("=== End velocity update ===");
     return current_velocity;
 }
 
