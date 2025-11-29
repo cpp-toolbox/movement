@@ -1,6 +1,7 @@
 #ifndef MOVEMENT_HPP
 #define MOVEMENT_HPP
 
+#include <numbers>
 #include <glm/glm.hpp>
 
 #include <glm/gtc/matrix_transform.hpp>
@@ -162,7 +163,7 @@ class RotatingMovement {
     glm::vec3 get_current_position(double dt) {
         accumulated_time_ += dt;
 
-        double angular_velocity = rotation_rate_hz_ * 2.0 * M_PI; // radians per sec
+        double angular_velocity = rotation_rate_hz_ * 2.0 * std::numbers::pi; // radians per sec
         double angle = angular_velocity * accumulated_time_;
 
         glm::vec3 base(radius_, 0.0f, 0.0f);
