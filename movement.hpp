@@ -84,9 +84,77 @@ constexpr float JUMP_SPEED = 5.0f;                // initial jump velocity
 constexpr float MOVING_FRICTION_PER_SECOND = 0.5; // after one second your velocity will be halved
 constexpr float STOPPING_FRICTION_PER_SECOND = 0.01;
 
+struct MovementParameters {
+    float gravity;
+    float acceleration;
+    float jump_speed;
+    float moving_friction_per_second;
+    float stopping_friction_per_second;
+};
+
+/**
+ *
+ * This analysis assumes that we are lookin at velocity along one axis, but this logic extends for vectors.
+ *
+ * f: the friction value in (0, 1)
+ * dt: the delta time (can vary per iteration, but we assume that it's constant)
+ *
+ * v0 = 0
+ * v1 = (v0 + a * dt) * f^dt
+ * v2 = (v1 + a * dt) * f^dt
+ *
+ * v2 = ((v0 + a * dt) * f^dt + a * dt) * f^dt
+ *    = (v0 * f^dt + a * dt * f^dt + a * dt) * f^dt (distribute f^dt)
+ *    = (v0 * f^{2dt} + a * dt * f^{2dt} + a * dt * f^dt)
+ *    = (v0 * f^{2dt} + a * dt * f^{2dt} + a * dt * f^dt)
+ *    = (v0 * f^{2dt} + (a * dt) * (f^{2dt} + f^dt))
+ *
+ * therefore:
+ *
+ * vn = (v0 * f^{ndt} + (a * dt) * (f^{ndt} + f^{(n-1)dt} + ... + f^dt))
+ *
+ * because f in (0, 1), then we can re-write that summation as:
+ *
+ * (f^{ndt} + f^{(n-1)dt} + ... + f^dt) = ((f^dt)^(n) + (f^dt)^(n-1) + ... + (f^dt)
+ *                                      = f^dt * ((f^dt)^(n - 1) + (f^dt)^(n-2) + ... + 1
+ *                                      = f^dt * ((1 - (f^dt)^n) / (1 - f^dt))
+ *
+ * so
+ *
+ * vn = v0 * f^n + (a * dt) * f^dt * ((1 - (f^dt)^n) / (1 - f^dt))
+ *
+ * but also v0 = 0, therefore we have:
+ *
+ * vn = (a * dt) * f^dt * ((1 - (f^dt)^n) / (1 - f^dt))
+ *
+ * therefore as n -> oo we have the max velocity equal to
+ *
+ * vmax = (a * dt) * (f^dt / (1 - f^dt))
+ *
+ * Note that this depends on dt, but as long as it's close to zero the values are rougly the same
+ *
+ * you can use this page to determine your max velocity from the friction per second and acceleration:
+ *
+ * https://www.desmos.com/calculator/1e30133f74
+ *
+ * Note that if we inspect the graph of this function it tells us how velocity changes over time, so instead we can also
+ * just choose an arbitrary function that behaves like that, eg:
+ * (1 - e^{-kx}) * L
+ *
+ */
+
+constexpr MovementParameters default_movement_parameters{
+    -9.81f, // gravity
+    10.0f,  // acceleration
+    5.0f,   // jump_speed
+    0.06f,  // moving_friction_per_second
+    0.01f   // stopping_friction_per_second
+};
+
 template <FPSMovementInputLike Input>
 glm::vec3 get_new_fps_character_velocity(glm::vec3 current_velocity, const Input &input_state,
                                          glm::vec3 xy_forward_vector_camera, double dt, GroundState ground_state,
+                                         const MovementParameters &movement_parameters = default_movement_parameters,
                                          LogSection::LogMode log_mode = LogSection::LogMode::disable) {
     LogSection _(*global_logger, "get_new_fps_character_velocity", log_mode);
 
@@ -96,11 +164,11 @@ glm::vec3 get_new_fps_character_velocity(glm::vec3 current_velocity, const Input
     global_logger->info("Delta time (dt): {}", dt);
     global_logger->info("Ground state: {}", static_cast<int>(ground_state));
 
-    // Get input vector
+    // get input vector
     glm::vec2 input_vec = get_input_vector(input_state);
     global_logger->info("Input vector: x={}, y={}", input_vec.x, input_vec.y);
 
-    // Convert input to world-space horizontal velocity
+    // convert input to world-space horizontal velocity
     glm::vec3 forward = glm::normalize(glm::vec3(xy_forward_vector_camera.x, 0.0f, xy_forward_vector_camera.z));
     glm::vec3 right = glm::normalize(glm::cross(forward, glm::vec3(0, 1, 0)));
     global_logger->info("Forward vector: x={}, y={}, z={}", forward.x, forward.y, forward.z);
@@ -110,29 +178,27 @@ glm::vec3 get_new_fps_character_velocity(glm::vec3 current_velocity, const Input
     global_logger->info("Look input vector (world-space): x={}, y={}, z={}", look_input_vec.x, look_input_vec.y,
                         look_input_vec.z);
 
-    // Horizontal velocity only
+    // horizontal velocity only
     glm::vec3 horizontal_velocity = glm::vec3(current_velocity.x, 0.0f, current_velocity.z);
     global_logger->info("Initial horizontal velocity: x={}, y={}, z={}", horizontal_velocity.x, horizontal_velocity.y,
                         horizontal_velocity.z);
 
     if (glm::length(look_input_vec) > 0.0f) {
-        // Accelerate in the input direction
-        horizontal_velocity += look_input_vec * static_cast<float>(ACCELERATION * dt);
+        // accelerate in the input direction
+        horizontal_velocity += look_input_vec * static_cast<float>(movement_parameters.acceleration * dt);
         global_logger->info("Accelerated horizontal velocity: x={}, y={}, z={}", horizontal_velocity.x,
                             horizontal_velocity.y, horizontal_velocity.z);
 
-        // Apply moving friction
-        horizontal_velocity *= pow(MOVING_FRICTION_PER_SECOND, dt);
+        horizontal_velocity *= pow(movement_parameters.moving_friction_per_second, dt);
         global_logger->info("After moving friction: x={}, y={}, z={}", horizontal_velocity.x, horizontal_velocity.y,
                             horizontal_velocity.z);
     } else {
-        // Apply stopping friction
-        horizontal_velocity *= pow(STOPPING_FRICTION_PER_SECOND, dt);
+        horizontal_velocity *= pow(movement_parameters.stopping_friction_per_second, dt);
         global_logger->info("No input detected. After stopping friction: x={}, y={}, z={}", horizontal_velocity.x,
                             horizontal_velocity.y, horizontal_velocity.z);
     }
 
-    // Copy over horizontal velocity, keep vertical unchanged
+    // copy over horizontal velocity, keep vertical unchanged
     current_velocity.x = horizontal_velocity.x;
     current_velocity.z = horizontal_velocity.z;
     global_logger->info("Updated current_velocity (horizontal only): x={}, y={}, z={}", current_velocity.x,
@@ -141,21 +207,19 @@ glm::vec3 get_new_fps_character_velocity(glm::vec3 current_velocity, const Input
     if (ground_state == GroundState::on_ground) {
         global_logger->info("On ground logic active");
 
-        // Zero out downward velocity
         if (current_velocity.y < 0.0f) {
             current_velocity.y = 0.0f;
             global_logger->info("Downward velocity zeroed");
         }
 
-        // Jumping
         if (input_state.jump_pressed) {
-            current_velocity.y = JUMP_SPEED;
+            current_velocity.y = movement_parameters.jump_speed;
             global_logger->info("Jump pressed. New vertical velocity: y={}", current_velocity.y);
         }
     }
 
-    // Apply gravity
-    current_velocity.y += GRAVITY * dt;
+    // apply gravity
+    current_velocity.y += movement_parameters.gravity * dt;
     global_logger->info("After gravity: y={}", current_velocity.y);
 
     global_logger->info("=== End velocity update ===");
