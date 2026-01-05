@@ -153,7 +153,7 @@ constexpr MovementParameters default_movement_parameters{
 
 template <FPSMovementInputLike Input>
 glm::vec3 get_new_fps_character_velocity(glm::vec3 current_velocity, const Input &input_state,
-                                         glm::vec3 xy_forward_vector_camera, double dt, GroundState ground_state,
+                                         glm::vec3 xz_forward_vector_camera, double dt, GroundState ground_state,
                                          const MovementParameters &movement_parameters = default_movement_parameters,
                                          LogSection::LogMode log_mode = LogSection::LogMode::disable) {
     LogSection _(*global_logger, "get_new_fps_character_velocity", log_mode);
@@ -169,7 +169,7 @@ glm::vec3 get_new_fps_character_velocity(glm::vec3 current_velocity, const Input
     global_logger->info("Input vector: x={}, y={}", input_vec.x, input_vec.y);
 
     // convert input to world-space horizontal velocity
-    glm::vec3 forward = glm::normalize(glm::vec3(xy_forward_vector_camera.x, 0.0f, xy_forward_vector_camera.z));
+    glm::vec3 forward = glm::normalize(glm::vec3(xz_forward_vector_camera.x, 0.0f, xz_forward_vector_camera.z));
     glm::vec3 right = glm::normalize(glm::cross(forward, glm::vec3(0, 1, 0)));
     global_logger->info("Forward vector: x={}, y={}, z={}", forward.x, forward.y, forward.z);
     global_logger->info("Right vector: x={}, y={}, z={}", right.x, right.y, right.z);
