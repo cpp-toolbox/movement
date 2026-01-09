@@ -2,6 +2,9 @@
 
 namespace movement {
 
+float average_walking_rate_of_a_human = 1.3;
+float average_running_rate_of_a_human = 3;
+
 glm::vec3 get_normalized_input_direction_xyz(glm::vec3 forward, GodModeInput god_mode_input) {
 
     glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);

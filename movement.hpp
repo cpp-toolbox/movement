@@ -12,6 +12,10 @@
 
 namespace movement {
 
+// measured in units per second
+extern float average_walking_rate_of_a_human;
+extern float average_running_rate_of_a_human;
+
 template <typename T>
 concept FPSMovementInputLike = requires(const T t) {
     // can't use convertible_to on apple-clang13
@@ -112,6 +116,7 @@ struct MovementParameters {
  * therefore:
  *
  * vn = (v0 * f^{ndt} + (a * dt) * (f^{ndt} + f^{(n-1)dt} + ... + f^dt))
+ *    = (a * dt) * (f^{ndt} + f^{(n-1)dt} + ... + f^dt)
  *
  * because f in (0, 1), then we can re-write that summation as:
  *
@@ -186,6 +191,8 @@ glm::vec3 get_new_fps_character_velocity(glm::vec3 current_velocity, const Input
     if (glm::length(look_input_vec) > 0.0f) {
         // accelerate in the input direction
         horizontal_velocity += look_input_vec * static_cast<float>(movement_parameters.acceleration * dt);
+        global_logger->info("accel: {} * dt: {} = {}", movement_parameters.acceleration, dt,
+                            movement_parameters.acceleration * dt);
         global_logger->info("Accelerated horizontal velocity: x={}, y={}, z={}", horizontal_velocity.x,
                             horizontal_velocity.y, horizontal_velocity.z);
 
